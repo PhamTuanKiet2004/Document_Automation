@@ -6,6 +6,7 @@ export interface User {
     email: string;
     department?: string;
     role: 'admin' | 'user';
+    is_active: boolean;
     created_at: string;
     updated_at: string;
 }

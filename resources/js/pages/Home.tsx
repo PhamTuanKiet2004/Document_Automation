@@ -35,35 +35,41 @@ export default function Home() {
 
             {/* Features */}
             <div className="grid md:grid-cols-3 gap-8 mb-16">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
-                        <FileText className="h-6 w-6 text-blue-600" />
+                <Link to="/templates" className="block h-full">
+                    <div className="bg-white p-6 rounded-lg shadow-md h-full hover:shadow-xl transition-shadow cursor-pointer border border-transparent hover:border-blue-100">
+                        <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
+                            <FileText className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Kho mẫu phong phú</h3>
+                        <p className="text-gray-600">
+                            Hàng trăm mẫu văn bản hành chính, hợp đồng, email được cập nhật thường xuyên
+                        </p>
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">Kho mẫu phong phú</h3>
-                    <p className="text-gray-600">
-                        Hàng trăm mẫu văn bản hành chính, hợp đồng, email được cập nhật thường xuyên
-                    </p>
-                </div>
+                </Link>
 
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mb-4">
-                        <Search className="h-6 w-6 text-green-600" />
+                <Link to="/templates" className="block h-full">
+                    <div className="bg-white p-6 rounded-lg shadow-md h-full hover:shadow-xl transition-shadow cursor-pointer border border-transparent hover:border-green-100">
+                        <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mb-4">
+                            <Search className="h-6 w-6 text-green-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Tìm kiếm thông minh</h3>
+                        <p className="text-gray-600">
+                            Tìm kiếm và lọc mẫu theo danh mục, từ khóa một cách nhanh chóng
+                        </p>
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">Tìm kiếm thông minh</h3>
-                    <p className="text-gray-600">
-                        Tìm kiếm và lọc mẫu theo danh mục, từ khóa một cách nhanh chóng
-                    </p>
-                </div>
+                </Link>
 
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
-                        <FileCheck className="h-6 w-6 text-purple-600" />
+                <Link to="/templates" className="block h-full">
+                    <div className="bg-white p-6 rounded-lg shadow-md h-full hover:shadow-xl transition-shadow cursor-pointer border border-transparent hover:border-purple-100">
+                        <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
+                            <FileCheck className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Soạn thảo tự động</h3>
+                        <p className="text-gray-600">
+                            Điền thông tin vào form, hệ thống tự động tạo văn bản hoàn chỉnh
+                        </p>
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">Soạn thảo tự động</h3>
-                    <p className="text-gray-600">
-                        Điền thông tin vào form, hệ thống tự động tạo văn bản hoàn chỉnh
-                    </p>
-                </div>
+                </Link>
             </div>
 
             {/* How it works */}

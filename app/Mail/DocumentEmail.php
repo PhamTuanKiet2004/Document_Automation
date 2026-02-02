@@ -21,11 +21,13 @@ class DocumentEmail extends Mailable
     public $ccRecipients;
     public $bccRecipients;
     public $uploadedAttachments;
+    public $htmlContent;
+    public $isEmailMode;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Document $document, $pdfContent, $customSubject = null, $cc = [], $bcc = [], $uploadedAttachments = [])
+    public function __construct(Document $document, $pdfContent, $customSubject = null, $cc = [], $bcc = [], $uploadedAttachments = [], $htmlContent = null, $isEmailMode = false)
     {
         $this->document = $document;
         $this->pdfContent = $pdfContent;
@@ -33,6 +35,8 @@ class DocumentEmail extends Mailable
         $this->ccRecipients = $cc;
         $this->bccRecipients = $bcc;
         $this->uploadedAttachments = $uploadedAttachments;
+        $this->htmlContent = $htmlContent;
+        $this->isEmailMode = $isEmailMode;
     }
 
     /**
@@ -66,6 +70,8 @@ class DocumentEmail extends Mailable
             view: 'emails.document',
             with: [
                 'documentTitle' => $this->document->template->title ?? 'Tài liệu',
+                'htmlContent' => $this->htmlContent,
+                'isEmailMode' => $this->isEmailMode,
             ],
         );
     }
@@ -77,12 +83,13 @@ class DocumentEmail extends Mailable
      */
     public function attachments(): array
     {
-        $filename = ($this->document->template->title ?? 'document') . '.pdf';
+        $attachments = [];
 
-        $attachments = [
-            Attachment::fromData(fn() => $this->pdfContent, $filename)
-                ->withMime('application/pdf'),
-        ];
+        if (!$this->isEmailMode && $this->pdfContent) {
+            $filename = ($this->document->template->title ?? 'document') . '.pdf';
+            $attachments[] = Attachment::fromData(fn() => $this->pdfContent, $filename)
+                ->withMime('application/pdf');
+        }
 
         // Add uploaded attachments
         if (!empty($this->uploadedAttachments)) {

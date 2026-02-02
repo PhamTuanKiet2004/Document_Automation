@@ -218,7 +218,7 @@ export default function RichTextEditor({ value, onChange, variables = [], height
                                                 <button
                                                     key={v.key}
                                                     type="button"
-                                                    onClick={() => insertHTML(`{{${v.key}}}`)}
+                                                    onClick={() => insertHTML(`<span class="template-variable" data-variable="${v.key}" style="background-color: #eff6ff; color: #1d4ed8; padding: 0 4px; border-radius: 4px; border: 1px dashed #93c5fd;">${v.label}</span>&nbsp;`)}
                                                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 >
                                                     <span className="font-medium text-blue-600">[{v.label}]</span>

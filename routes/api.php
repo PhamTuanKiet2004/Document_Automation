@@ -26,4 +26,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/documents/{document}/export/pdf', [\App\Http\Controllers\DocumentController::class, 'exportPDF']);
     Route::get('/documents/{document}/export/word', [\App\Http\Controllers\DocumentController::class, 'exportWord']);
     Route::post('/documents/{document}/send-email', [\App\Http\Controllers\DocumentController::class, 'sendEmail']);
+    // Admin Routes
+    Route::prefix('admin')->group(function () {
+        Route::get('/stats', [\App\Http\Controllers\AdminController::class, 'stats']);
+        Route::get('/users', [\App\Http\Controllers\AdminController::class, 'getUsers']);
+        Route::post('/users/{user}/toggle-status', [\App\Http\Controllers\AdminController::class, 'toggleUserStatus']);
+    });
 });

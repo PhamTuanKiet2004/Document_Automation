@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Users, Folder, Mail } from 'lucide-react';
-import { templateService } from '../../services/templates';
-import { documentService } from '../../services/documents';
-import { userService } from '../../services/users';
+import { adminService } from '../../services/admin';
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState({
         templates: 0,
         documents: 0,
+        documents_sent: 0,
+        documents_draft: 0,
         users: 0,
         categories: 0,
     });
@@ -21,13 +21,14 @@ export default function AdminDashboard() {
     const loadStats = async () => {
         try {
             setLoading(true);
-            // Load statistics - adjust based on your API
-            // This is a placeholder - you'll need to implement actual API endpoints
+            const data = await adminService.getStats();
             setStats({
-                templates: 0,
-                documents: 0,
-                users: 0,
-                categories: 0,
+                templates: data.templates,
+                documents: data.documents,
+                documents_sent: data.documents_sent || 0,
+                documents_draft: data.documents_draft || 0,
+                users: data.users,
+                categories: data.categories,
             });
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -81,12 +82,22 @@ export default function AdminDashboard() {
                 </Link>
 
                 <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                         <div>
                             <p className="text-sm text-gray-600">Tài liệu</p>
                             <p className="text-2xl font-bold text-gray-900">{stats.documents}</p>
                         </div>
                         <Mail className="h-12 w-12 text-orange-600" />
+                    </div>
+                    <div className="flex items-center text-xs space-x-3 pt-2 border-t border-gray-100">
+                        <span className="flex items-center text-green-600 font-medium">
+                            <span className="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                            {stats.documents_sent} Đã gửi
+                        </span>
+                        <span className="flex items-center text-gray-500">
+                            <span className="w-2 h-2 rounded-full bg-gray-300 mr-1"></span>
+                            {stats.documents_draft} Nháp
+                        </span>
                     </div>
                 </div>
             </div>

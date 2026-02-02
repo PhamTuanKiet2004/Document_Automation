@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { userService, User } from '../../services/users';
 import toast from 'react-hot-toast';
-import { UserX } from 'lucide-react';
+import { UserX, UserCheck } from 'lucide-react';
 
 export default function AdminUsers() {
     const [users, setUsers] = useState<User[]>([]);
@@ -55,9 +55,7 @@ export default function AdminUsers() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Email
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Phòng ban
-                                </th>
+
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Vai trò
                                 </th>
@@ -78,9 +76,7 @@ export default function AdminUsers() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm text-gray-500">{user.email}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-500">{user.department || '-'}</div>
-                                    </td>
+
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span
                                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'admin'
@@ -92,17 +88,20 @@ export default function AdminUsers() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            Hoạt động
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
+                                            }`}>
+                                            {user.is_active ? 'Hoạt động' : 'Đã khóa'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
                                             onClick={() => handleToggleStatus(user.id)}
-                                            className="text-blue-600 hover:text-blue-900"
-                                            title="Khóa/Mở khóa tài khoản"
+                                            className={`${user.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
+                                            title={user.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
                                         >
-                                            <UserX className="h-5 w-5" />
+                                            {user.is_active ? <UserX className="h-5 w-5" /> : <UserCheck className="h-5 w-5" />}
                                         </button>
                                     </td>
                                 </tr>
