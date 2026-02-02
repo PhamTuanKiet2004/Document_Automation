@@ -214,7 +214,9 @@ class DocumentController extends Controller
                 $request->subject,
                 $request->cc ?? [],
                 $request->bcc ?? [],
-                $request->file('attachments') ?? []
+                $request->file('attachments') ?? [],
+                $content,
+                ($document->template->type ?? 'document') === 'email'
             ));
 
         return response()->json(['message' => 'Email sent successfully']);

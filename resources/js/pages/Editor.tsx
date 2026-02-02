@@ -17,6 +17,11 @@ export default function Editor() {
     const [previewMode, setPreviewMode] = useState(false);
 
     // Email State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; docId: number | null }>({
+        isOpen: false,
+        docId: null,
+    });
+    const [isSending, setIsSending] = useState(false);
     const [emailFields, setEmailFields] = useState({
         recipient: '',
         subject: '',
@@ -49,15 +54,32 @@ export default function Editor() {
 
             setDocumentId(doc.id);
 
-            if (doc.template) {
-                setTemplate(doc.template);
-            } else if (doc.template_id) {
+            let currentTemplate = doc.template;
+            if (!currentTemplate && doc.template_id) {
                 const tData = await templateService.getById(doc.template_id);
-                setTemplate(tData.data || tData);
+                currentTemplate = tData.data || tData;
             }
+            setTemplate(currentTemplate);
 
             if (doc.content_data) reset(doc.content_data);
-            if (doc.custom_content) setEditedContent(doc.custom_content);
+
+            if (doc.custom_content) {
+                let content = doc.custom_content;
+                // Auto-rehydrate: If no variable spans found, try to inject them based on current values
+                if (!content.includes('template-variable') && doc.content_data && currentTemplate?.fields) {
+                    currentTemplate.fields.forEach((f: any) => {
+                        const val = doc.content_data[f.field_key];
+                        // Only replace if value is substantial to avoid false positives (e.g. "a", "1")
+                        if (val && String(val).trim().length > 0) {
+                            const escaped = String(val).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            // Avoid replacing inside HTML tags (simple heuristic)
+                            // This simple regex might match attributes, but unlikely with typical user content.
+                            content = content.replace(new RegExp(escaped, 'g'), `<span class="template-variable" data-variable="${f.field_key}">${val}</span>`);
+                        }
+                    });
+                }
+                setEditedContent(content);
+            }
 
         } catch (error: any) {
             console.error(error);
@@ -88,11 +110,89 @@ export default function Editor() {
         let content = template.content;
         template.fields?.forEach((field) => {
             const value = formData[field.field_key] || '';
+            // Wrap in span for live updating. preserve {{ }} for regex to work next time? No, regex replaces {{ }}.
+            // We replace {{ key }} with <span data-variable="key">value</span>
+            // Note: We must ensure we don't break HTML structure.
             const regex = new RegExp(`{{\\s*${field.field_key}\\s*}}`, 'g');
-            content = content.replace(regex, value);
+            content = content.replace(regex, `<span class="template-variable" data-variable="${field.field_key}">${value}</span>`);
         });
         return content;
     };
+
+
+
+
+
+    const handleExportPdf = async () => {
+        if (!documentId) return;
+        try {
+            toast.loading('Đang tạo PDF...');
+            await saveDraft(watch(), 'completed'); // Mark as completed on export
+            const blob = await documentService.exportPDF(documentId);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${template?.title || 'document'}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            toast.dismiss();
+            toast.success('Đã tải xuống PDF');
+        } catch (error) {
+            toast.dismiss();
+            toast.error('Không thể xuất PDF');
+        }
+    };
+
+    const handleExportWord = async () => {
+        if (!documentId) return;
+        try {
+            toast.loading('Đang tạo Word...');
+            await saveDraft(watch(), 'completed'); // Mark as completed on export
+            const blob = await documentService.exportWord(documentId);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${template?.title || 'document'}.docx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            toast.dismiss();
+            toast.success('Đã tải xuống Word');
+        } catch (error) {
+            toast.dismiss();
+            toast.error('Không thể xuất Word');
+        }
+    };
+
+    // Live Sync Effect (Enabled for ALL types now)
+    useEffect(() => {
+        if (!template) return;
+
+        const subscription = watch((value, { name, type }) => {
+            setEditedContent((prevContent) => {
+                if (!prevContent) return prevContent;
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(prevContent, 'text/html');
+                const variables = doc.body.querySelectorAll('.template-variable');
+
+                let hasChange = false;
+                variables.forEach((el: any) => {
+                    const key = el.getAttribute('data-variable');
+                    if (key && value[key] !== undefined) {
+                        if (el.innerHTML !== value[key]) {
+                            el.innerHTML = value[key] || '';
+                            hasChange = true;
+                        }
+                    }
+                });
+
+                return hasChange ? doc.body.innerHTML : prevContent;
+            });
+        });
+        return () => subscription.unsubscribe();
+    }, [watch, template]);
 
     const saveDraft = async (data: Record<string, any>, status: 'draft' | 'completed' | 'sent' = 'draft') => {
         if (!template) return null;
@@ -121,6 +221,7 @@ export default function Editor() {
         }
     };
 
+
     const onSubmit = async (data: Record<string, any>) => {
         const id = await saveDraft(data, 'draft');
         if (id) toast.success('Đã lưu bản nháp');
@@ -128,25 +229,33 @@ export default function Editor() {
 
     const handleSendEmail = async () => {
         if (!template) return;
-        const formData = watch();
+        if (isSending) return;
 
-        // Save first
-        const docId = await saveDraft(formData, 'sent');
-        if (!docId) return;
-
-        // Validation only for Email Mode
-        if (template.type === 'email' && !emailFields.recipient) {
-            toast.error('Vui lòng nhập Email người nhận');
-            return;
-        }
-
-        const recipient = template.type === 'email' ? emailFields.recipient : emailFields.recipient; // Logic reuse
-
-        // Prepare CC/BCC arrays
-        const ccList = emailFields.cc ? emailFields.cc.split(',').map(e => e.trim()).filter(Boolean) : [];
-        const bccList = emailFields.bcc ? emailFields.bcc.split(',').map(e => e.trim()).filter(Boolean) : [];
+        setIsSending(true);
+        const toastId = toast.loading('Đang gửi email...');
 
         try {
+            const formData = watch();
+
+            // Save first
+            const docId = await saveDraft(formData, 'sent');
+            if (!docId) {
+                toast.dismiss(toastId);
+                return;
+            }
+
+            // Validation only for Email Mode
+            if (template.type === 'email' && !emailFields.recipient) {
+                toast.error('Vui lòng nhập Email người nhận', { id: toastId });
+                return;
+            }
+
+            const recipient = template.type === 'email' ? emailFields.recipient : emailFields.recipient; // Logic reuse
+
+            // Prepare CC/BCC arrays
+            const ccList = emailFields.cc ? emailFields.cc.split(',').map(e => e.trim()).filter(Boolean) : [];
+            const bccList = emailFields.bcc ? emailFields.bcc.split(',').map(e => e.trim()).filter(Boolean) : [];
+
             await documentService.sendEmail(
                 docId,
                 recipient,
@@ -155,10 +264,13 @@ export default function Editor() {
                 bccList,
                 attachments
             );
-            toast.success('Đã gửi email thành công');
+            toast.success('Đã gửi email thành công', { id: toastId });
             if (template.type !== 'email') setShowEmailModal(false);
         } catch (error: any) {
-            toast.error('Không thể gửi email');
+            console.error(error);
+            toast.error('Gửi email thất bại', { id: toastId });
+        } finally {
+            setIsSending(false);
         }
     };
 
@@ -258,29 +370,38 @@ export default function Editor() {
                 </div>
 
                 {/* Editor Content */}
-                <div className="flex-1 flex flex-col min-h-0 relative">
-                    {/* Overlay Form Fields Guide if needed, or just let them edit directly */}
-                    {/* For Email Mode, we default to "Edit Mode" immediately because form is less relevant unless variables are heavy.
-                         But wait, user needs to fill variables too! 
-                         Let's keep the variable inputs in a sidebar or toggle?
-                         Actually, for simplicity, let's keep it clean. If they need variables, they might need the Form.
-                         Let's put the Variable Form in a Collapsible Side or Modal?
-                         User request: "Gmail like". Gmail doesn't have a variable form.
-                         Let's assume for Email Mode, the user EDITs directly mainly.
-                         But if they defined variables, they probably want to fill them.
-                         Let's put variables in a Popover "Điền thông tin" or just assume direct edit.
-                         Decision: Direct Edit is Primary. Variable Filling via Form is secondary.
-                         I will hide the form by default and show a "Variable Input" button if fields exist.
-                     */}
+                <div className="flex-1 flex flex-row min-h-0 relative gap-6">
+                    {/* Variable Inputs Sidebar (Only if fields exist) */}
+                    {template.fields && template.fields.length > 0 && (
+                        <div className="w-80 border-r border-gray-100 pr-6 overflow-y-auto hidden md:block">
+                            <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wider">Thông tin cần điền</h3>
+                            <form className="space-y-4">
+                                {template.fields.map((field) => (
+                                    <div key={field.id}>
+                                        {/* Reuse renderField but with slightly different styling if needed? 
+                                             renderField returns a div with mb-4. 
+                                             Let's just call renderField(field). 
+                                             Note: renderField uses 'register' from useForm context, which handles state.
+                                         */}
+                                        {renderField(field)}
+                                    </div>
+                                ))}
+                            </form>
+                        </div>
+                    )}
 
-                    <RichTextEditor
-                        value={editedContent || renderContent(watch())} // Init with rendered content
-                        onChange={setEditedContent}
-                        variables={template.fields?.map(f => ({ key: f.field_key!, label: f.label! }))}
-                        height="100%"
-                        isFullScreen={false} // No A4 styling
-                        type={template.type}
-                    />
+                    <div className="flex-1 h-full flex flex-col">
+                        <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
+                            <RichTextEditor
+                                value={editedContent || renderContent(watch())} // Init with rendered content
+                                onChange={setEditedContent}
+                                variables={template.fields?.map(f => ({ key: f.field_key!, label: f.label! }))}
+                                height="100%"
+                                isFullScreen={false} // No A4 styling
+                                type={template.type}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Attachments & Footer */}
@@ -305,6 +426,13 @@ export default function Editor() {
                                 Gửi đi
                                 <Mail className="ml-2 w-4 h-4" />
                             </button>
+                            <button
+                                onClick={() => saveDraft(watch(), 'draft').then((id) => id && toast.success('Đã lưu bản nháp'))}
+                                className="px-4 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-full font-medium transition-colors flex items-center"
+                            >
+                                <Save className="w-4 h-4 mr-2" />
+                                Lưu nháp
+                            </button>
                             <div className="relative">
                                 <input
                                     type="file"
@@ -318,19 +446,6 @@ export default function Editor() {
                                 </button>
                             </div>
                         </div>
-
-                        {/* Option to open variable form if needed */}
-                        {template.fields && template.fields.length > 0 && (
-                            <button
-                                onClick={() => setPreviewMode(!previewMode)} // Reusing previewMode toggle to show/hide form? No, custom new state better.
-                                // Actually, let's keep it simple. If they want to use variables, they can use the "Insert Variable" in RTE.
-                                // Or we can toggle a sidebar. For now, RTE variable insertion is enough.
-                                className="text-gray-400 text-sm"
-                            >
-                                {/* Placeholder for autosaving text */}
-                                Đã lưu bản nháp
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -364,7 +479,14 @@ export default function Editor() {
                     </div>
                     {/* Export Buttons */}
                     <div className="flex space-x-4 mt-6">
-                        {/* Call handlers (PDF/Word) - same as before */}
+                        <button onClick={handleExportPdf} className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center font-medium">
+                            <Download className="h-5 w-5 mr-2" />
+                            Xuất PDF
+                        </button>
+                        <button onClick={handleExportWord} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex items-center font-medium">
+                            <FileText className="h-5 w-5 mr-2" />
+                            Xuất Word
+                        </button>
                     </div>
                 </div>
             ) : (
@@ -375,6 +497,14 @@ export default function Editor() {
                             <div className="prose max-w-none bg-white shadow-sm mx-auto" style={{ width: '100%', padding: '10mm', fontFamily: '"Times New Roman", Times, serif', fontSize: '10pt', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: previewContent }} />
                         </div>
                         {/* Export Buttons */}
+                        <div className="flex space-x-2 mt-4 pt-4 border-t">
+                            <button onClick={handleExportPdf} className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 text-sm font-medium flex items-center justify-center">
+                                <Download className="h-4 w-4 mr-2" /> PDF
+                            </button>
+                            <button onClick={handleExportWord} className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-sm font-medium flex items-center justify-center">
+                                <FileText className="h-4 w-4 mr-2" /> Word
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
