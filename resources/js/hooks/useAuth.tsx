@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<User | null>;
     register: (name: string, email: string, password: string, password_confirmation: string) => Promise<void>;
     logout: () => Promise<void>;
     isAdmin: boolean;
@@ -25,8 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const userData = await authService.getCurrentUser();
             setUser(userData);
+            return userData;
         } catch (error) {
             setUser(null);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -35,8 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = async (email: string, password: string) => {
         try {
             await authService.login({ email, password });
-            await loadUser();
+            const user = await loadUser();
             toast.success('Đăng nhập thành công!');
+            return user;
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Đăng nhập thất bại');
             throw error;

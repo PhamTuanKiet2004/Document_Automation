@@ -48,6 +48,12 @@ export default function Templates() {
         return true;
     });
 
+    const stripHtml = (html: string) => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Kho mẫu văn bản</h1>
@@ -129,8 +135,8 @@ export default function Templates() {
                                     Danh mục: {template.category.name}
                                 </p>
                             )}
-                            <p className="text-gray-600 text-sm line-clamp-2">
-                                {template.content.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                            <p className="text-gray-600 text-sm line-clamp-3">
+                                {stripHtml(template.content)}
                             </p>
                         </Link>
                     ))}

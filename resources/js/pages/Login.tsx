@@ -17,8 +17,12 @@ export default function Login() {
     const onSubmit = async (data: LoginForm) => {
         setLoading(true);
         try {
-            await login(data.email, data.password);
-            navigate('/');
+            const user = await login(data.email, data.password);
+            if (user?.role === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/');
+            }
         } catch (error) {
             // Error handled by toast in useAuth
         } finally {
@@ -27,7 +31,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="flex-1 w-full flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
                 <div>
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">

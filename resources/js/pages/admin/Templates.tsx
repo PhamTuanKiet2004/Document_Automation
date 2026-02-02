@@ -478,6 +478,7 @@ export default function AdminTemplates() {
                                         height={isFullScreen ? 'auto' : '400px'}
                                         isFullScreen={isFullScreen}
                                         type={formData.type}
+                                        insertMode="template"
                                     />
                                 </div>
                             </div>
