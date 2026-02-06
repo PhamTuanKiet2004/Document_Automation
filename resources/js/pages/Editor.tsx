@@ -169,7 +169,7 @@ export default function Editor() {
     useEffect(() => {
         if (!template) return;
 
-        const subscription = watch((value, { name, type }) => {
+        const subscription = watch((value) => {
             setEditedContent((prevContent) => {
                 if (!prevContent) return prevContent;
 
